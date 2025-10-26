@@ -6,7 +6,7 @@ end
 
 %% カスタムメニュー項目を定義：5つのメニュー項目を返す
 function schemaFcns = getMyMenuItems(callbackInfo) 
-  schemaFcns = {@getItem1,@getItem2,@getItem3,@getItem4,@alignBlocksHorizontalMenu, @alignBlocksVerticalMenu}; 
+  schemaFcns = {@getItem1,@getItem2,@getItem3,@getItem4,@alignBlocksHorizontalMenu, @alignBlocksVerticalMenu, @getItem5}; 
 
 end
 
@@ -58,7 +58,6 @@ end
 function myCallback4(callbackInfo)
 
 % SimulinkモデルにInportブロックを10個自動配置するスクリプト
-% �w�i�F�F�V�A��
 
 % Inportブロックの配置位置  (Positions of Inport blocks)
 positions = [
@@ -194,4 +193,97 @@ function alignBlocksVerticalCallback(callbackInfo)
     end
     
     disp(['ブロックの縦位置を "' get_param(selected_blocks{left_index}, 'Name') '" に合わせました']);
+end
+
+%% メニュー項目5：ブロックパラメータを取得
+function schema = getItem5(callbackInfo)
+  schema = sl_action_schema;
+  schema.label = 'Get Parameter';
+  schema.callback = @showBlockParameters;
+end
+
+function showBlockParameters(callbackInfo)
+% showBlockParameters - 選択されているブロックのパラメータ一覧を表示
+%
+% 使用方法:
+%   Simulinkモデルでブロックを1つ選択してから実行
+%   >> showBlockParameters()
+
+    % 現在選択されているブロックを取得
+    selectedBlock = gcb;
+    
+    % ブロックが選択されているか確認
+    if isempty(selectedBlock)
+        disp('ブロックが選択されていません');
+        return;
+    end
+    
+    disp('=========================================');
+    disp(['選択ブロック: ', selectedBlock]);
+    disp('=========================================');
+    
+    % ブロックタイプを取得
+    blockType = get_param(selectedBlock, 'BlockType');
+    disp(['ブロックタイプ: ', blockType]);
+    
+    % すべてのパラメータを取得
+    try
+        % ダイアログパラメータを取得
+        dialogParams = get_param(selectedBlock, 'DialogParameters');
+        
+        if ~isempty(dialogParams)
+            disp(' ');
+            disp('--- ダイアログパラメータ ---');
+            paramNames = fieldnames(dialogParams);
+            
+            for i = 1:length(paramNames)
+                paramName = paramNames{i};
+                try
+                    paramValue = get_param(selectedBlock, paramName);
+                    
+                    % 値を文字列として表示
+                    if ischar(paramValue)
+                        disp([paramName, ': ', paramValue]);
+                    elseif isnumeric(paramValue)
+                        disp([paramName, ': ', num2str(paramValue)]);
+                    else
+                        disp([paramName, ': [', class(paramValue), ']']);
+                    end
+                catch
+                    disp([paramName, ': (取得不可)']);
+                end
+            end
+        end
+        
+        % オブジェクトパラメータも取得
+        disp(' ');
+        disp('--- オブジェクトパラメータ ---');
+        objectParams = get_param(selectedBlock, 'ObjectParameters');
+        
+        if ~isempty(objectParams)
+            paramNames = fieldnames(objectParams);
+            
+            for i = 1:length(paramNames)
+                paramName = paramNames{i};
+                try
+                    paramValue = get_param(selectedBlock, paramName);
+                    
+                    if ischar(paramValue)
+                        disp([paramName, ': ', paramValue]);
+                    elseif isnumeric(paramValue)
+                        disp([paramName, ': ', num2str(paramValue)]);
+                    else
+                        disp([paramName, ': [', class(paramValue), ']']);
+                    end
+                catch
+                    % 表示をスキップ
+                end
+            end
+        end
+        
+    catch ME
+        disp(['エラー: ', ME.message]);
+    end
+    
+    disp('=========================================');
 end
