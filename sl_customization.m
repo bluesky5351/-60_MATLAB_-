@@ -4,9 +4,9 @@ function sl_customization(cm)
   cm.addCustomMenuFcn('Simulink:PreContextMenu', @getMyMenuItems);
 end
 
-%% カスタムメニュー項目を定義：4つのメニュー項目を返す
+%% カスタムメニュー項目を定義：5つのメニュー項目を返す
 function schemaFcns = getMyMenuItems(callbackInfo) 
-  schemaFcns = {@getItem1,@getItem2,@getItem3,@getItem4}; 
+  schemaFcns = {@getItem1,@getItem2,@getItem3,@getItem4,@alignBlocksMenu}; 
 end
 
 %% メニュー項目1：テスト用の基本メニュー
@@ -57,7 +57,6 @@ end
 function myCallback4(callbackInfo)
 
 % SimulinkモデルにInportブロックを10個自動配置するスクリプト
-% �w�i�F�F�V�A��
 
 % Inportブロックの配置位置  (Positions of Inport blocks)
 positions = [
@@ -97,4 +96,52 @@ for i = 1:10
         'Port', num2str(i));
 end
 
+end
+
+function schema = alignBlocksMenu(callbackInfo)
+    % メニュー項目のスキーマを作成
+    schema = sl_action_schema;
+    schema.label = '横位置を揃える';
+    schema.userdata = 'align_blocks';
+    schema.callback = @alignBlocksCallback;
+    
+    % 複数のブロックが選択されている場合のみ有効化
+    selected_blocks = find_system(gcs, 'SearchDepth', 1, 'Selected', 'on');
+    selected_blocks = setdiff(selected_blocks, gcs);
+    schema.state = 'Enabled';
+    if length(selected_blocks) < 2
+        schema.state = 'Disabled';
+    end
+end
+
+function alignBlocksCallback(callbackInfo)
+    % 横位置を揃える処理
+    selected_blocks = find_system(gcs, 'SearchDepth', 1, 'Selected', 'on');
+    selected_blocks = setdiff(selected_blocks, gcs);
+    
+    if length(selected_blocks) < 2
+        return;
+    end
+    
+    % 各ブロックの位置を取得
+    positions = zeros(length(selected_blocks), 4);
+    for i = 1:length(selected_blocks)
+        positions(i, :) = get_param(selected_blocks{i}, 'Position');
+    end
+    
+    % 一番上のブロック(Y座標が最小)を見つける
+    [~, top_index] = min(positions(:, 2));
+    
+    % 基準となるX座標(左端)
+    target_x = positions(top_index, 1);
+    
+    % すべてのブロックのX座標を合わせる
+    for i = 1:length(selected_blocks)
+        current_pos = positions(i, :);
+        block_width = current_pos(3) - current_pos(1);
+        new_pos = [target_x, current_pos(2), target_x + block_width, current_pos(4)];
+        set_param(selected_blocks{i}, 'Position', new_pos);
+    end
+    
+    disp(['ブロックの横位置を "' get_param(selected_blocks{top_index}, 'Name') '" に合わせました']);
 end
