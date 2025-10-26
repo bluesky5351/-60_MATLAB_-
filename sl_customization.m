@@ -6,7 +6,8 @@ end
 
 %% カスタムメニュー項目を定義：5つのメニュー項目を返す
 function schemaFcns = getMyMenuItems(callbackInfo) 
-  schemaFcns = {@getItem1,@getItem2,@getItem3,@getItem4,@alignBlocksMenu}; 
+  schemaFcns = {@getItem1,@getItem2,@getItem3,@getItem4,@alignBlocksHorizontalMenu, @alignBlocksVerticalMenu}; 
+
 end
 
 %% メニュー項目1：テスト用の基本メニュー
@@ -57,6 +58,7 @@ end
 function myCallback4(callbackInfo)
 
 % SimulinkモデルにInportブロックを10個自動配置するスクリプト
+% �w�i�F�F�V�A��
 
 % Inportブロックの配置位置  (Positions of Inport blocks)
 positions = [
@@ -98,12 +100,12 @@ end
 
 end
 
-function schema = alignBlocksMenu(callbackInfo)
-    % メニュー項目のスキーマを作成
+function schema = alignBlocksHorizontalMenu(callbackInfo)
+    % 横位置を揃えるメニュー項目のスキーマを作成
     schema = sl_action_schema;
-    schema.label = '横位置を揃える';
-    schema.userdata = 'align_blocks';
-    schema.callback = @alignBlocksCallback;
+    schema.label = '横位置を揃える（一番上基準）';
+    schema.userdata = 'align_blocks_horizontal';
+    schema.callback = @alignBlocksHorizontalCallback;
     
     % 複数のブロックが選択されている場合のみ有効化
     selected_blocks = find_system(gcs, 'SearchDepth', 1, 'Selected', 'on');
@@ -114,7 +116,23 @@ function schema = alignBlocksMenu(callbackInfo)
     end
 end
 
-function alignBlocksCallback(callbackInfo)
+function schema = alignBlocksVerticalMenu(callbackInfo)
+    % 縦位置を揃えるメニュー項目のスキーマを作成
+    schema = sl_action_schema;
+    schema.label = '縦位置を揃える（一番左基準）';
+    schema.userdata = 'align_blocks_vertical';
+    schema.callback = @alignBlocksVerticalCallback;
+    
+    % 複数のブロックが選択されている場合のみ有効化
+    selected_blocks = find_system(gcs, 'SearchDepth', 1, 'Selected', 'on');
+    selected_blocks = setdiff(selected_blocks, gcs);
+    schema.state = 'Enabled';
+    if length(selected_blocks) < 2
+        schema.state = 'Disabled';
+    end
+end
+
+function alignBlocksHorizontalCallback(callbackInfo)
     % 横位置を揃える処理
     selected_blocks = find_system(gcs, 'SearchDepth', 1, 'Selected', 'on');
     selected_blocks = setdiff(selected_blocks, gcs);
@@ -144,4 +162,36 @@ function alignBlocksCallback(callbackInfo)
     end
     
     disp(['ブロックの横位置を "' get_param(selected_blocks{top_index}, 'Name') '" に合わせました']);
+end
+
+function alignBlocksVerticalCallback(callbackInfo)
+    % 縦位置を揃える処理
+    selected_blocks = find_system(gcs, 'SearchDepth', 1, 'Selected', 'on');
+    selected_blocks = setdiff(selected_blocks, gcs);
+    
+    if length(selected_blocks) < 2
+        return;
+    end
+    
+    % 各ブロックの位置を取得
+    positions = zeros(length(selected_blocks), 4);
+    for i = 1:length(selected_blocks)
+        positions(i, :) = get_param(selected_blocks{i}, 'Position');
+    end
+    
+    % 一番左のブロック(X座標が最小)を見つける
+    [~, left_index] = min(positions(:, 1));
+    
+    % 基準となるY座標(上端)
+    target_y = positions(left_index, 2);
+    
+    % すべてのブロックのY座標を合わせる
+    for i = 1:length(selected_blocks)
+        current_pos = positions(i, :);
+        block_height = current_pos(4) - current_pos(2);
+        new_pos = [current_pos(1), target_y, current_pos(3), target_y + block_height];
+        set_param(selected_blocks{i}, 'Position', new_pos);
+    end
+    
+    disp(['ブロックの縦位置を "' get_param(selected_blocks{left_index}, 'Name') '" に合わせました']);
 end
